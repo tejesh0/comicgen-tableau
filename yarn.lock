@@ -2776,6 +2776,11 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
+comicgen@^0.1.7:
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/comicgen/-/comicgen-0.1.7.tgz#fc7ac05caa00b6ec5619bad8cdc675eaa4910191"
+  integrity sha512-0yeGtBDrQ4IH8as0ZsyrBQ6bikaBBek4vq+rwoIAEnk7FEObkT1pjrRkIqF/t/JRz+SMhmG6mECdMXMiSuBb/A==
+
 commander@^2.11.0, commander@^2.20.0:
   version "2.20.3"
   resolved "https://registry.yarnpkg.com/commander/-/commander-2.20.3.tgz#fd485e84c03eb4881c20722ba48035e8531aeb33"
@@ -4385,6 +4390,11 @@ form-data@~2.3.2:
     asynckit "^0.4.0"
     combined-stream "^1.0.6"
     mime-types "^2.1.12"
+
+form-serialize@^0.7.2:
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/form-serialize/-/form-serialize-0.7.2.tgz#b0a2ff0c22026fb6d3d15c9d33f6de6a432e4732"
+  integrity sha1-sKL/DCICb7bT0VydM/beakMuRzI=
 
 forwarded@~0.1.2:
   version "0.1.2"
