@@ -5,3 +5,10 @@
 .sm-12 {
   font-size: 12px !important;
 }
+
+:root {
+  --comic-caption-padding: 0.25rem 0.5rem;  /* Custom margin. Default: 0.25rem */
+}
+.comic-caption-top, .comic-caption-bottom { /* Apply any custom styles you want */
+  text-transform: uppercase;
+}
