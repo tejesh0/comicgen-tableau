@@ -103,7 +103,7 @@ class App extends React.Component {
   loadForm() {
     // TODO: hide loader
     let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
-    console.log('worksheets', worksheets)
+    // console.log('worksheets', worksheets)
     this.setState({ worksheets: worksheets })
 
     // TODO: what if Sheets are empty, 
@@ -128,14 +128,15 @@ class App extends React.Component {
   handleSubmit(event) {
     event.preventDefault();
     var self = this
-    console.log('submit: ', this.state, event.target, event.target.name)
+    // console.log('submit: ', this.state, event.target, event.target.name)
     const body = serialize(event.target, { hash: true })
-    console.log('body', body, this.state.worksheetData, body.emotionField, this.state.emotionField.options.indexOf(body.emotionField))
-    console.log(this.state.worksheetData[this.state.emotionField.options.indexOf(body.emotionField)]._formattedValue)
+    // console.log('body', body, this.state.worksheetData, body.emotionField, this.state.emotionField.options.indexOf(body.emotionField))
+    // console.log(this.state.worksheetData[this.state.emotionField.options.indexOf(body.emotionField)]._formattedValue)
     this.setState({
       comicgen: {
         avatar: body.avatar,
         pose: body.pose,
+        annotation: this.state.worksheetData[this.state.speechBubbleTextField.options.indexOf(body.speechBubbleTextField)]._formattedValue,
         emotion: avatar_map[body.avatar]['emotion_'+this.state.worksheetData[this.state.emotionField.options.indexOf(body.emotionField)]._formattedValue]
       },
       avatar: {
@@ -149,6 +150,10 @@ class App extends React.Component {
       emotionField: {
         ...this.state.emotionField,
         value: body.emotionField
+      },
+      speechBubbleTextField: {
+        ...this.state.speechBubbleTextField,
+        value: body.speechBubbleTextField
       }
 
     }, function() {
@@ -166,7 +171,7 @@ class App extends React.Component {
   reloadSheetFields (sheetname) {
     if (!sheetname) return
     var worksheet = this.state.worksheets.find(sheet => sheet.name === sheetname)
-    worksheet.getUnderlyingDataAsync().then(this.afterDataSelected.bind(this))
+    worksheet.getSummaryDataAsync().then(this.afterDataSelected.bind(this))
     var self = this
     this.state.worksheets.forEach(function(wrksht) {
       self.loadSelectedMarks(wrksht, worksheet)
@@ -174,7 +179,6 @@ class App extends React.Component {
   }
 
   loadSelectedMarks(worksheet, main_worksheet) {
-    console.log('worksheet', worksheet)
     let markselectionEventListener
     let self = this
 
@@ -183,21 +187,25 @@ class App extends React.Component {
       self.state[worksheet.name]()
     }
     markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
-      console.log("insdie evnt listener")
-      main_worksheet.getUnderlyingDataAsync().then(self.refreshEmotion.bind(self))
+      console.log("insdie evnt listener", main_worksheet, main_worksheet.name)
+      main_worksheet.getSummaryDataAsync().then(self.summaryrefresh.bind(self))
     })
-    console.log('outside event listener')
     self.setState({ [worksheet.name]: markselectionEventListener })
   }
 
-  refreshEmotion(marks) {
+  summaryrefresh(marks) {
+    console.log('summary refresh', marks, marks.columns)
     var worksheetData = marks.data[0]
+    var cols = marks.columns.map(d=> d._fieldName)
+    var actual_emotion = worksheetData[cols.indexOf('AGG('+this.state.emotionField.value+')')]._formattedValue.toLowerCase()
+    var emotion = avatar_map[this.state.comicgen.avatar]['emotion_'+actual_emotion]
+    var annotation = worksheetData[cols.indexOf('AGG('+this.state.speechBubbleTextField.value+')')]._formattedValue.toLowerCase()
 
-    console.log(this.state.emotionField.value, 'emotionField', worksheetData[this.state.emotionField.options.indexOf(this.state.emotionField.value)]._formattedValue)
     this.setState({
       comicgen: {
         ...this.state.comicgen,
-        emotion: avatar_map[this.state.comicgen.avatar]['emotion_'+worksheetData[this.state.emotionField.options.indexOf(this.state.emotionField.value)]._formattedValue.toLowerCase()]
+        emotion: emotion,
+        annotation: annotation
       }
     },function() {
       comicgen('.new')
@@ -207,14 +215,15 @@ class App extends React.Component {
   afterDataSelected (marks) {
     var self = this
     var worksheetData = marks.data[0]
-    const columnNames = marks.columns.map(function (column) {
-      return column.fieldName
-    });
+    const aggColumnNames = marks.columns.map(function (column) {
+      return column._fieldName
+    })
+    const columnNames = aggColumnNames.map(function(col) {
+      return /AGG\((.*?)\)/i.exec(col)[1]
+    })
     self.setState({
       worksheetData: worksheetData
     })
-
-    console.log('columnnames', columnNames)
 
     self.setState({
       emotionField: {
@@ -231,13 +240,14 @@ class App extends React.Component {
   render() {
     console.log("#############", this.state)
     return (
-      <div className="app">
-        <div className="header">
+      <div className="app row">
+        <div className="header col-1">
           <img src={settings} alt="settings" onClick={this.handleToggleClick} className="position-absolute cursor-pointer" width="30px" />
         </div>
 
+        <div className="col-11">
           <div className={this.state.showConfig ? 'configuration': 'd-none' }>
-          <form onSubmit={this.handleSubmit}>
+            <form onSubmit={this.handleSubmit}>
             {
               this.state.configuration.map((key) => {
                 return (
@@ -253,18 +263,20 @@ class App extends React.Component {
               <Button type="submit" kind="primary" className="font-weight-bold">Render Comic</Button>
             </div>
           </form>
+          </div>
+          <div className={this.state.showConfig ? 'd-none': 'comic-panel'}>
+              <div class="comic-caption-top">{this.state.comicgen.annotation}</div>
+              <g className="new"
+                height="500"
+                width="300"
+                name={this.state.comicgen.avatar}
+                angle="straight"
+                emotion={this.state.comicgen.emotion}
+                pose={this.state.comicgen.pose}
+              ></g>
+          </div>
         </div>
-        <div className={this.state.showConfig ? 'd-none': 'comic-panel'}>
-            <div class="comic-caption-top">Hi! I'm Dee. This could be larger sentence?</div>
-            <g className="new"
-              height="500"
-              width="300"
-              name={this.state.comicgen.avatar}
-              angle="straight"
-              emotion={this.state.comicgen.emotion}
-              pose={this.state.comicgen.pose}
-            ></g>
-        </div>
+
       </div>
     );
   }
