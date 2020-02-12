@@ -4,8 +4,6 @@ import settings from './settings.svg'
 import { Button, DropdownSelect } from '@tableau/tableau-ui'
 import './App.css'
 
-console.log('OOOOOOOO', document.currentScript, document.currentScript.src)
-console.log('svgs', typeof(svgs))
 /* global tableau, comicgen */
 
 let avatar_map = {
@@ -71,7 +69,7 @@ class App extends React.Component {
       avatar: {
         value: '',
         label: 'Select Avatar',
-        options: ['dee', 'dey']
+        options: ['dey', 'dee']
       },
       pose: {
         value: '',
@@ -81,7 +79,7 @@ class App extends React.Component {
       emotionField: {
         value: '',
         label: 'Select Emotion Field',
-        options: ['sales', 'emotion']
+        options: []
       },
       speechBubbleTextField: {
         value: '',
@@ -197,9 +195,9 @@ class App extends React.Component {
     console.log('summary refresh', marks, marks.columns)
     var worksheetData = marks.data[0]
     var cols = marks.columns.map(d=> d._fieldName)
-    var actual_emotion = worksheetData[cols.indexOf('AGG('+this.state.emotionField.value+')')]._formattedValue.toLowerCase()
+    var actual_emotion = worksheetData[cols.indexOf(this.state.emotionField.value)]._formattedValue.toLowerCase()
     var emotion = avatar_map[this.state.comicgen.avatar]['emotion_'+actual_emotion]
-    var annotation = worksheetData[cols.indexOf('AGG('+this.state.speechBubbleTextField.value+')')]._formattedValue.toLowerCase()
+    var annotation = worksheetData[cols.indexOf(this.state.speechBubbleTextField.value)]._formattedValue.toLowerCase()
 
     this.setState({
       comicgen: {
@@ -214,13 +212,16 @@ class App extends React.Component {
 
   afterDataSelected (marks) {
     var self = this
+    console.log('insital', marks)
     var worksheetData = marks.data[0]
-    const aggColumnNames = marks.columns.map(function (column) {
+    const columnNames = marks.columns.map(function (column) {
       return column._fieldName
     })
-    const columnNames = aggColumnNames.map(function(col) {
-      return /AGG\((.*?)\)/i.exec(col)[1]
-    })
+    // const columnNames = aggColumnNames.map(function(col) {
+    //   console.log('col', col)
+    //   return col._fieldName
+    // })
+    console.log('columnNames', columnNames)
     self.setState({
       worksheetData: worksheetData
     })
@@ -240,7 +241,7 @@ class App extends React.Component {
   render() {
     console.log("#############", this.state)
     return (
-      <div className="app row">
+      <div className="app d-flex">
         <div className="header col-1">
           <img src={settings} alt="settings" onClick={this.handleToggleClick} className="position-absolute cursor-pointer" width="30px" />
         </div>
@@ -267,8 +268,9 @@ class App extends React.Component {
           <div className={this.state.showConfig ? 'd-none': 'comic-panel'}>
               <div class="comic-caption-top">{this.state.comicgen.annotation}</div>
               <g className="new"
-                height="500"
+                height="360"
                 width="300"
+                scale="1.4"
                 name={this.state.comicgen.avatar}
                 angle="straight"
                 emotion={this.state.comicgen.emotion}
