@@ -3,53 +3,9 @@ import serialize from 'form-serialize'
 import settings from './settings.svg'
 import { Button, DropdownSelect } from '@tableau/tableau-ui'
 import './App.css'
+import avatar_map from './avatarMapping.js'
 
 /* global tableau, comicgen */
-
-let avatar_map = {
-  "dey": {
-      emotion_normal: "normal",
-      emotion_laugh: "smile",
-      emotion_sad: "tired",
-      emotion_angry: "shocked",
-      emotion_worried: "shocked",
-      emotion_surprised: "hmmconfused",
-      emotion_wink: "wink",
-      pose_pointingright: "pointingright",
-      pose_pointingup: "pointingup",
-      pose_yuhoo: "yuhoo",
-      pose_superperfect: "superperfect",
-      pose_holdinglaptop: "holdinglaptop",
-      pose_angryfrustrated: "angryfrustrated",
-      pose_handsfolded: "handsfolded",
-      pose_handsonhip: "handsonhip",
-      pose_holdingbook: "holdingbook",
-      pose_readingpaper: "readingpaper",
-      pose_thumbsup: "thumbsup",
-      pose_thinkinghmm: "thinkinghmm"
-  },
-  "dee": {
-      emotion_normal: "smile",
-      emotion_laugh: "smilehappy",
-      emotion_sad: "sad",
-      emotion_angry: "angryfrustrated",
-      emotion_worried: "worried",
-      emotion_surprised: "angryshouting",
-      emotion_wink: "wink",
-      pose_pointingright: "pointingright",
-      pose_pointingup: "pointingup",
-      pose_yuhoo: "yuhoo",
-      pose_superperfect: "superperfect",
-      pose_holdinglaptop: "holdinglaptop",
-      pose_angryfrustrated: "angryfrustrated",
-      pose_handsfolded: "handsfolded",
-      pose_handsonhip: "handsonhip",
-      pose_holdingbook: "holdingbook",
-      pose_readingpaper: "readingpaper",
-      pose_thumbsup: "thumbsup",
-      pose_thinkinghmm: "thinkinghmm"
-  }
-};
 
 class App extends React.Component {
   constructor(props) {
@@ -87,24 +43,16 @@ class App extends React.Component {
         options: []
       }
     };
-
-
-    // TODO: show loader
-
     tableau.extensions.initializeAsync().then(this.loadForm.bind(this))
-
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleToggleClick = this.handleToggleClick.bind(this);
   }
 
   loadForm() {
-    // TODO: hide loader
     let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
-    // console.log('worksheets', worksheets)
     this.setState({ worksheets: worksheets })
-
-    // TODO: what if Sheets are empty, 
+    // TODO: what if Sheets are empty,
     //  handle empty condition by showing a "No worksheets found. Add a worksheet" message
     this.setState({
       sheetname: {
@@ -116,7 +64,6 @@ class App extends React.Component {
   }
 
   handleChange(event) {
-    // console.log('event: ', event.target, event.target.name)
     if (event.target.name === 'sheetname') {
       this.setState({ sheetname: { ...this.state.sheetname, value: event.target.value } })
       this.reloadSheetFields(event.target.value)
@@ -126,10 +73,7 @@ class App extends React.Component {
   handleSubmit(event) {
     event.preventDefault();
     var self = this
-    // console.log('submit: ', this.state, event.target, event.target.name)
     const body = serialize(event.target, { hash: true })
-    // console.log('body', body, this.state.worksheetData, body.emotionField, this.state.emotionField.options.indexOf(body.emotionField))
-    // console.log(this.state.worksheetData[this.state.emotionField.options.indexOf(body.emotionField)]._formattedValue)
     this.setState({
       comicgen: {
         avatar: body.avatar,
@@ -185,7 +129,6 @@ class App extends React.Component {
       self.state[worksheet.name]()
     }
     markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
-      console.log("insdie evnt listener", main_worksheet, main_worksheet.name)
       main_worksheet.getSummaryDataAsync().then(self.summaryrefresh.bind(self))
     })
     self.setState({ [worksheet.name]: markselectionEventListener })
@@ -217,14 +160,11 @@ class App extends React.Component {
     const columnNames = marks.columns.map(function (column) {
       return column._fieldName
     })
-    // const columnNames = aggColumnNames.map(function(col) {
-    //   console.log('col', col)
-    //   return col._fieldName
-    // })
     console.log('columnNames', columnNames)
     self.setState({
       worksheetData: worksheetData
     })
+    
 
     self.setState({
       emotionField: {
@@ -242,11 +182,10 @@ class App extends React.Component {
     console.log("#############", this.state)
     return (
       <div className="app d-flex">
-        <div className="header col-1">
+        <div className="header col-2">
           <img src={settings} alt="settings" onClick={this.handleToggleClick} className="position-absolute cursor-pointer" width="30px" />
         </div>
-
-        <div className="col-11">
+        <div className="col-10">
           <div className={this.state.showConfig ? 'configuration': 'd-none' }>
             <form onSubmit={this.handleSubmit}>
             {
@@ -265,6 +204,13 @@ class App extends React.Component {
             </div>
           </form>
           </div>
+          {
+            this.state.loggedIn === true 
+            ?
+            <App1 />
+            :
+            <App2 />
+          }
           <div className={this.state.showConfig ? 'd-none': 'comic-panel'}>
               <div class="comic-caption-top">{this.state.comicgen.annotation}</div>
               <g className="new"
@@ -278,11 +224,9 @@ class App extends React.Component {
               ></g>
           </div>
         </div>
-
       </div>
     );
   }
-
 }
 
 class Dropdown extends React.Component {
