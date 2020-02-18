@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="Comicgen" content="Create data stories using comics" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+  <link href="https://fonts.googleapis.com/css?family=Neucha&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/comicgen/dist/comicgen.min.css">
+  <style>
+    .cursor-pointer {
+      cursor: pointer;
+    }
+  </style>
+  <script src="/tableau.extensions.1.latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/comicgen@0.1.7/dist/comicgen.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.slim.min.js"></script>
+  <link rel="apple-touch-icon" href="/logo192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Comicgen Extension</title>
+</head>
+
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <div>
+      <div class="comic-caption-top bg-secondary">Empty Annotation</div>
+      <g class="new" height="360" width="300" scale="1.4" angle="straight"></g>
+    </div>
+
+    <script>
+        (function () {
+          const defaultIntervalInMin = '5';
+          let activeDatasourceIdList = [];
+          let sheetListeners = {}
+
+          $(document).ready(function () {
+            console.log('tableau extensions settings: ', tableau.extensions.settings)
+            tableau.extensions.initializeAsync({ 'configure': configure }).then(function () {
+              console.log('tableau extensions settings later: ', tableau.extensions.settings)
+              const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+              callback(initialPayload)
+              tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
+                updateExtensionBasedOnSettings(settingsEvent);
+              });
+            });
+          });
+
+          function callback(closePayload){
+            console.log('closePayload', closePayload)
+            const comicgenOptions = JSON.parse(closePayload.settings)
+            var obj = Object.assign({}, comicgenOptions)
+            obj.name = comicgenOptions.avatar
+            comicgen('.new', obj)
+            console.log('comicgenOptions', obj)
+            $('.comic-caption-top').html(comicgenOptions.annotation)
+
+            reloadSheetFields(closePayload.currentSheetName)
+
+          }
+
+          function configure() {
+            const popupUrl = `${window.location.origin}/index.html`;
+            const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+
+            tableau.extensions.ui.displayDialogAsync(popupUrl, initialPayload, { height: 500, width: 500 }).then(callback).catch((error) => {
+              // One expected error condition is when the popup is closed by the user (meaning the user
+              // clicks the 'X' in the top right of the dialog).  This can be checked for like so:
+              switch (error.errorCode) {
+                case tableau.ErrorCodes.DialogClosedByUser:
+                  console.log('Dialog was closed by user');
+                  break;
+                default:
+                  console.error(error.message);
+              }
+            });
+          }
+
+
+          function reloadSheetFields(sheetname) {
+            if (!sheetname) return
+            let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
+
+            var worksheet = worksheets.find(sheet => sheet.name === sheetname)
+            worksheet.getSummaryDataAsync().then(afterDataSelected)
+            worksheets.forEach(function (wrksht) {
+              loadSelectedMarks(wrksht, worksheet)
+            })
+          }
+
+          function loadSelectedMarks(worksheet, main_worksheet) {
+            let markselectionEventListener
+
+            // Call to get the selected marks for our sheet
+            if (sheetListeners[worksheet.name]) {
+              sheetListeners[worksheet.name]()
+            }
+            markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
+              main_worksheet.getSummaryDataAsync().then(summaryrefresh.bind)
+            })
+            sheetListeners[worksheet.name] = markselectionEventListener
+          }
+
+          function summaryrefresh(marks, comicgenOptions) {
+            console.log('summary refresh', marks, marks.columns)
+            var worksheetData = marks.data[0]
+            var cols = marks.columns.map(d => d._fieldName)
+            var actual_emotion = worksheetData[cols.indexOf(this.state.emotionField.value)]._formattedValue.toLowerCase()
+            comicgenOptions['emotion'] = avatar_map[comicgenOptions.avatar]['emotion_' + actual_emotion]
+            comicgenOptions['annotation'] = worksheetData[cols.indexOf(this.state.speechBubbleTextField.value)]._formattedValue.toLowerCase()
+
+            comicgen('.new', comicgenOptions)
+
+          }
+
+          function afterDataSelected(marks) {
+            var self = this
+            console.log('insital', marks)
+            var worksheetData = marks.data[0]
+            const columnNames = marks.columns.map(function (column) {
+              return column._fieldName
+            })
+            console.log('columnNames', columnNames)
+          }
+
+          /**
+           * Helper that is called to set state anytime the settings are changed.
+           */
+          function updateExtensionBasedOnSettings(settings) {
+            var state = JSON.parse(settings);
+            console.log('settings parsed: ', state)
+          }
+        })();
+    
+    </script>
+</body>
+
+</html>

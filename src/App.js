@@ -12,7 +12,6 @@ class App extends React.Component {
     super(props);
     var self = this;
     self.state = {
-      showConfig: true,
       configuration: ['sheetname', 'avatar', 'pose', 'emotionField', 'speechBubbleTextField'],
       comicgen: {
 
@@ -43,15 +42,17 @@ class App extends React.Component {
         options: []
       }
     };
-    tableau.extensions.initializeAsync().then(this.loadForm.bind(this))
+    tableau.extensions.initializeDialogAsync().then(this.loadForm.bind(this))
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleToggleClick = this.handleToggleClick.bind(this);
   }
 
-  loadForm() {
+  loadForm(initState) {
+    console.log('initState from actual', initState)
+
     let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
-    this.setState({ worksheets: worksheets })
+    this.setState({ worksheets: worksheets, comicgen: JSON.parse(initState) })
     // TODO: what if Sheets are empty,
     //  handle empty condition by showing a "No worksheets found. Add a worksheet" message
     this.setState({
@@ -99,83 +100,23 @@ class App extends React.Component {
       }
 
     }, function() {
-      comicgen('.new')
-      self.handleToggleClick()
+      this.closeDialog()
     })
+  }
+
+
+  closeDialog() {
+    console.log('this')
+    tableau.extensions.settings.set('settings', JSON.stringify(this.state.comicgen));
+
+    tableau.extensions.settings.saveAsync().then((newSavedSettings) => {
+      console.log('newSavedSettings', newSavedSettings)
+      tableau.extensions.ui.closeDialog(newSavedSettings);
+    });
   }
 
   handleToggleClick() {
-    this.setState(state => ({
-      showConfig: !state.showConfig
-    }))
-  }
 
-  reloadSheetFields (sheetname) {
-    if (!sheetname) return
-    var worksheet = this.state.worksheets.find(sheet => sheet.name === sheetname)
-    worksheet.getSummaryDataAsync().then(this.afterDataSelected.bind(this))
-    var self = this
-    this.state.worksheets.forEach(function(wrksht) {
-      self.loadSelectedMarks(wrksht, worksheet)
-    })
-  }
-
-  loadSelectedMarks(worksheet, main_worksheet) {
-    let markselectionEventListener
-    let self = this
-
-    // Call to get the selected marks for our sheet
-    if (self.state[worksheet.name]) {
-      self.state[worksheet.name]()
-    }
-    markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
-      main_worksheet.getSummaryDataAsync().then(self.summaryrefresh.bind(self))
-    })
-    self.setState({ [worksheet.name]: markselectionEventListener })
-  }
-
-  summaryrefresh(marks) {
-    console.log('summary refresh', marks, marks.columns)
-    var worksheetData = marks.data[0]
-    var cols = marks.columns.map(d=> d._fieldName)
-    var actual_emotion = worksheetData[cols.indexOf(this.state.emotionField.value)]._formattedValue.toLowerCase()
-    var emotion = avatar_map[this.state.comicgen.avatar]['emotion_'+actual_emotion]
-    var annotation = worksheetData[cols.indexOf(this.state.speechBubbleTextField.value)]._formattedValue.toLowerCase()
-
-    this.setState({
-      comicgen: {
-        ...this.state.comicgen,
-        emotion: emotion,
-        annotation: annotation
-      }
-    },function() {
-      comicgen('.new')
-    })
-  }
-
-  afterDataSelected (marks) {
-    var self = this
-    console.log('insital', marks)
-    var worksheetData = marks.data[0]
-    const columnNames = marks.columns.map(function (column) {
-      return column._fieldName
-    })
-    console.log('columnNames', columnNames)
-    self.setState({
-      worksheetData: worksheetData
-    })
-    
-
-    self.setState({
-      emotionField: {
-        ...self.state.emotionField,
-        options: columnNames
-      },
-      speechBubbleTextField: {
-        ...self.state.speechBubbleTextField,
-        options: columnNames
-      }
-    })
   }
 
   render() {
@@ -186,7 +127,7 @@ class App extends React.Component {
           <img src={settings} alt="settings" onClick={this.handleToggleClick} className="position-absolute cursor-pointer" width="30px" />
         </div>
         <div className="col-10">
-          <div className={this.state.showConfig ? 'configuration': 'd-none' }>
+          <div className="configuration">
             <form onSubmit={this.handleSubmit}>
             {
               this.state.configuration.map((key) => {
@@ -203,25 +144,6 @@ class App extends React.Component {
               <Button type="submit" kind="primary" className="font-weight-bold">Render Comic</Button>
             </div>
           </form>
-          </div>
-          {
-            this.state.loggedIn === true 
-            ?
-            <App1 />
-            :
-            <App2 />
-          }
-          <div className={this.state.showConfig ? 'd-none': 'comic-panel'}>
-              <div class="comic-caption-top">{this.state.comicgen.annotation}</div>
-              <g className="new"
-                height="360"
-                width="300"
-                scale="1.4"
-                name={this.state.comicgen.avatar}
-                angle="straight"
-                emotion={this.state.comicgen.emotion}
-                pose={this.state.comicgen.pose}
-              ></g>
           </div>
         </div>
       </div>
