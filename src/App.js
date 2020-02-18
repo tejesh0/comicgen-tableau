@@ -52,7 +52,7 @@ class App extends React.Component {
     console.log('initState from actual', initState)
 
     let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
-    this.setState({ worksheets: worksheets, comicgen: JSON.parse(initState) })
+    this.setState({ worksheets: worksheets })
     // TODO: what if Sheets are empty,
     //  handle empty condition by showing a "No worksheets found. Add a worksheet" message
     this.setState({
@@ -104,11 +104,47 @@ class App extends React.Component {
     })
   }
 
+  reloadSheetFields (sheetname) {
+    if (!sheetname) return
+    var worksheet = this.state.worksheets.find(sheet => sheet.name === sheetname)
+    worksheet.getSummaryDataAsync().then(this.afterDataSelected.bind(this))
+  }
+
+  afterDataSelected (marks) {
+    var self = this
+    console.log('insital', marks)
+    var worksheetData = marks.data[0]
+    const columnNames = marks.columns.map(function (column) {
+      return column._fieldName
+    })
+    console.log('columnNames', columnNames)
+    self.setState({
+      worksheetData: worksheetData
+    })
+    
+
+    self.setState({
+      emotionField: {
+        ...self.state.emotionField,
+        options: columnNames
+      },
+      speechBubbleTextField: {
+        ...self.state.speechBubbleTextField,
+        options: columnNames
+      }
+    })
+  }
 
   closeDialog() {
     console.log('this')
-    tableau.extensions.settings.set('settings', JSON.stringify(this.state.comicgen));
-
+    tableau.extensions.settings.set('settings', JSON.stringify({
+      comicgen: this.state.comicgen,
+      fields: {
+        sheetname: this.state.sheetname,
+        emotionField: this.state.emotionField,
+        speechBubbleTextField: this.state.speechBubbleTextField
+      }
+    }));
     tableau.extensions.settings.saveAsync().then((newSavedSettings) => {
       console.log('newSavedSettings', newSavedSettings)
       tableau.extensions.ui.closeDialog(newSavedSettings);

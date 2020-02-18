@@ -27,116 +27,151 @@
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
 
-    <div>
-      <div class="comic-caption-top bg-secondary">Empty Annotation</div>
-      <g class="new" height="360" width="300" scale="1.4" angle="straight"></g>
-    </div>
+  <div>
+    <div class="comic-caption-top bg-secondary">Empty Annotation</div>
+    <g class="new" height="360" width="300" scale="1.4" angle="straight"></g>
+  </div>
 
-    <script>
-        (function () {
-          const defaultIntervalInMin = '5';
-          let activeDatasourceIdList = [];
-          let sheetListeners = {}
+  <script>
+    (function () {
+      let avatar_map = {
+        "dey": {
+          emotion_normal: "normal",
+          emotion_laugh: "smile",
+          emotion_sad: "tired",
+          emotion_angry: "shocked",
+          emotion_worried: "shocked",
+          emotion_surprised: "hmmconfused",
+          emotion_wink: "wink",
+          pose_pointingright: "pointingright",
+          pose_pointingup: "pointingup",
+          pose_yuhoo: "yuhoo",
+          pose_superperfect: "superperfect",
+          pose_holdinglaptop: "holdinglaptop",
+          pose_angryfrustrated: "angryfrustrated",
+          pose_handsfolded: "handsfolded",
+          pose_handsonhip: "handsonhip",
+          pose_holdingbook: "holdingbook",
+          pose_readingpaper: "readingpaper",
+          pose_thumbsup: "thumbsup",
+          pose_thinkinghmm: "thinkinghmm"
+        },
+        "dee": {
+          emotion_normal: "smile",
+          emotion_laugh: "smilehappy",
+          emotion_sad: "sad",
+          emotion_angry: "angryfrustrated",
+          emotion_worried: "worried",
+          emotion_surprised: "angryshouting",
+          emotion_wink: "wink",
+          pose_pointingright: "pointingright",
+          pose_pointingup: "pointingup",
+          pose_yuhoo: "yuhoo",
+          pose_superperfect: "superperfect",
+          pose_holdinglaptop: "holdinglaptop",
+          pose_angryfrustrated: "angryfrustrated",
+          pose_handsfolded: "handsfolded",
+          pose_handsonhip: "handsonhip",
+          pose_holdingbook: "holdingbook",
+          pose_readingpaper: "readingpaper",
+          pose_thumbsup: "thumbsup",
+          pose_thinkinghmm: "thinkinghmm"
+        }
+      };
+      const defaultIntervalInMin = '5';
+      let activeDatasourceIdList = [];
+      let sheetListeners = {}
+      let comicgenOptions;
 
-          $(document).ready(function () {
-            console.log('tableau extensions settings: ', tableau.extensions.settings)
-            tableau.extensions.initializeAsync({ 'configure': configure }).then(function () {
-              console.log('tableau extensions settings later: ', tableau.extensions.settings)
-              const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
-              callback(initialPayload)
-              tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
-                updateExtensionBasedOnSettings(settingsEvent);
-              });
-            });
+      $(document).ready(function () {
+        console.log('tableau extensions settings: ', tableau.extensions.settings)
+        tableau.extensions.initializeAsync({ 'configure': configure }).then(function () {
+          console.log('tableau extensions settings later: ', tableau.extensions.settings)
+          const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+          callback(initialPayload)
+          tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
+            updateExtensionBasedOnSettings(settingsEvent);
           });
+        });
+      });
 
-          function callback(closePayload){
-            console.log('closePayload', closePayload)
-            const comicgenOptions = JSON.parse(closePayload.settings)
-            var obj = Object.assign({}, comicgenOptions)
-            obj.name = comicgenOptions.avatar
-            comicgen('.new', obj)
-            console.log('comicgenOptions', obj)
-            $('.comic-caption-top').html(comicgenOptions.annotation)
+      function callback(closePayload) {
+        console.log('closePayload', closePayload)
+        comicgenOptions = JSON.parse(closePayload.settings)
+        reloadComicgen(comicgenOptions.comicgen)
 
-            reloadSheetFields(closePayload.currentSheetName)
+        reloadSheetFields(comicgenOptions.fields.sheetname.value)
+      }
 
+      function reloadComicgen(opts) {
+        var obj = Object.assign({}, opts)
+        obj.name = opts.avatar
+        comicgen('.new', obj)
+        console.log('comicgenOptions.comicgen', obj)
+        $('.comic-caption-top').html(opts.annotation)
+      }
+
+      function configure() {
+        const popupUrl = `${window.location.origin}/index.html`;
+        const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+
+        tableau.extensions.ui.displayDialogAsync(popupUrl, initialPayload, { height: 500, width: 500 }).then(callback).catch((error) => {
+          // One expected error condition is when the popup is closed by the user (meaning the user
+          // clicks the 'X' in the top right of the dialog).  This can be checked for like so:
+          switch (error.errorCode) {
+            case tableau.ErrorCodes.DialogClosedByUser:
+              console.log('Dialog was closed by user');
+              break;
+            default:
+              console.error(error.message);
           }
-
-          function configure() {
-            const popupUrl = `${window.location.origin}/index.html`;
-            const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
-
-            tableau.extensions.ui.displayDialogAsync(popupUrl, initialPayload, { height: 500, width: 500 }).then(callback).catch((error) => {
-              // One expected error condition is when the popup is closed by the user (meaning the user
-              // clicks the 'X' in the top right of the dialog).  This can be checked for like so:
-              switch (error.errorCode) {
-                case tableau.ErrorCodes.DialogClosedByUser:
-                  console.log('Dialog was closed by user');
-                  break;
-                default:
-                  console.error(error.message);
-              }
-            });
-          }
+        });
+      }
 
 
-          function reloadSheetFields(sheetname) {
-            if (!sheetname) return
-            let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
+      function reloadSheetFields(sheetname) {
+        if (!sheetname) return
+        let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
 
-            var worksheet = worksheets.find(sheet => sheet.name === sheetname)
-            worksheet.getSummaryDataAsync().then(afterDataSelected)
-            worksheets.forEach(function (wrksht) {
-              loadSelectedMarks(wrksht, worksheet)
-            })
-          }
+        var worksheet = worksheets.find(sheet => sheet.name === sheetname)
+        worksheets.forEach(function (wrksht) {
+          loadSelectedMarks(wrksht, worksheet)
+        })
+      }
 
-          function loadSelectedMarks(worksheet, main_worksheet) {
-            let markselectionEventListener
+      function loadSelectedMarks(worksheet, main_worksheet) {
+        let markselectionEventListener
 
-            // Call to get the selected marks for our sheet
-            if (sheetListeners[worksheet.name]) {
-              sheetListeners[worksheet.name]()
-            }
-            markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
-              main_worksheet.getSummaryDataAsync().then(summaryrefresh.bind)
-            })
-            sheetListeners[worksheet.name] = markselectionEventListener
-          }
+        // Call to get the selected marks for our sheet
+        if (sheetListeners[worksheet.name]) {
+          sheetListeners[worksheet.name]()
+        }
+        markselectionEventListener = worksheet.addEventListener(tableau.TableauEventType.MarkSelectionChanged, function () {
+          main_worksheet.getSummaryDataAsync().then(summaryrefresh)
+        })
+        sheetListeners[worksheet.name] = markselectionEventListener
+      }
 
-          function summaryrefresh(marks, comicgenOptions) {
-            console.log('summary refresh', marks, marks.columns)
-            var worksheetData = marks.data[0]
-            var cols = marks.columns.map(d => d._fieldName)
-            var actual_emotion = worksheetData[cols.indexOf(this.state.emotionField.value)]._formattedValue.toLowerCase()
-            comicgenOptions['emotion'] = avatar_map[comicgenOptions.avatar]['emotion_' + actual_emotion]
-            comicgenOptions['annotation'] = worksheetData[cols.indexOf(this.state.speechBubbleTextField.value)]._formattedValue.toLowerCase()
+      function summaryrefresh(marks) {
+        console.log('summary refresh', marks, marks.columns)
+        var worksheetData = marks.data[0]
+        var cols = marks.columns.map(d => d._fieldName)
+        var actual_emotion = worksheetData[cols.indexOf(comicgenOptions.fields.emotionField.value)]._formattedValue.toLowerCase()
+        comicgenOptions.comicgen['emotion'] = avatar_map[comicgenOptions.comicgen.avatar]['emotion_' + actual_emotion]
+        comicgenOptions.comicgen['annotation'] = worksheetData[cols.indexOf(comicgenOptions.fields.speechBubbleTextField.value)]._formattedValue.toLowerCase()
 
-            comicgen('.new', comicgenOptions)
+        reloadComicgen(comicgenOptions.comicgen)
+      }
+      /**
+       * Helper that is called to set state anytime the settings are changed.
+       */
+      function updateExtensionBasedOnSettings(settings) {
+        var state = JSON.parse(settings);
+        console.log('settings parsed: ', state)
+      }
+    })();
 
-          }
-
-          function afterDataSelected(marks) {
-            var self = this
-            console.log('insital', marks)
-            var worksheetData = marks.data[0]
-            const columnNames = marks.columns.map(function (column) {
-              return column._fieldName
-            })
-            console.log('columnNames', columnNames)
-          }
-
-          /**
-           * Helper that is called to set state anytime the settings are changed.
-           */
-          function updateExtensionBasedOnSettings(settings) {
-            var state = JSON.parse(settings);
-            console.log('settings parsed: ', state)
-          }
-        })();
-    
-    </script>
+  </script>
 </body>
 
 </html>
