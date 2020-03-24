@@ -7,13 +7,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#000000" />
   <meta name="Comicgen" content="Create data stories using comics" />
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+  <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" /> -->
+
   <link href="https://fonts.googleapis.com/css?family=Neucha&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/comicgen/dist/comicgen.min.css">
   <style>
     .cursor-pointer {
       cursor: pointer;
+    }
+    :root {
+      --comic-caption-font: Neucha, 'Open Sans', cursive;
     }
   </style>
   <script src="/tableau.extensions.1.latest.min.js"></script>
@@ -28,7 +32,7 @@
   <noscript>You need to enable JavaScript to run this app.</noscript>
 
   <div>
-    <div class="comic-caption-top bg-secondary">Empty Annotation</div>
+    <div class="comic-caption-top">Please Configure ComicGen from top-right Context Menu</div>
     <g class="new" height="360" width="300" scale="1.4" angle="straight"></g>
   </div>
 
@@ -78,8 +82,6 @@
           pose_thinkinghmm: "thinkinghmm"
         }
       };
-      const defaultIntervalInMin = '5';
-      let activeDatasourceIdList = [];
       let sheetListeners = {}
       let comicgenOptions;
 
@@ -88,19 +90,27 @@
         tableau.extensions.initializeAsync({ 'configure': configure }).then(function () {
           console.log('tableau extensions settings later: ', tableau.extensions.settings)
           const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
-          callback(initialPayload)
+          callback(initialPayload.settings)
           tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
-            updateExtensionBasedOnSettings(settingsEvent);
+
+            console.log("settings udpated with payload as: ", settingsEvent )
+            callback(settingsEvent)
           });
         });
       });
 
       function callback(closePayload) {
         console.log('closePayload', closePayload)
-        comicgenOptions = JSON.parse(closePayload.settings)
+        comicgenOptions = JSON.parse(closePayload)
         reloadComicgen(comicgenOptions.comicgen)
 
-        reloadSheetFields(comicgenOptions.fields.sheetname.value)
+        let sheetname = comicgenOptions.form.sheetname.value
+        let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
+        let worksheet = worksheets
+          .find(sheet => sheet.name.trim() === sheetname.trim())
+        worksheets.forEach(function (wrksht) {
+          loadSelectedMarks(wrksht, worksheet)
+        })
       }
 
       function reloadComicgen(opts) {
@@ -112,10 +122,13 @@
       }
 
       function configure() {
-        const popupUrl = `${window.location.origin}/index.html`;
-        const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+        const baseURL = window.location.origin.includes('localhost:3000') ? window.location.origin : '.';
 
-        tableau.extensions.ui.displayDialogAsync(popupUrl, initialPayload, { height: 500, width: 500 }).then(callback).catch((error) => {
+        const popupUrl = `${baseURL}/index.html`;
+        // const initialPayload = tableau.extensions.settings._settingsImpl._currentSettings
+        const initialPayload = ''
+        tableau.extensions.ui.displayDialogAsync(popupUrl, initialPayload, { height: 500, width: 500 })
+        .then(callback).catch((error) => {
           // One expected error condition is when the popup is closed by the user (meaning the user
           // clicks the 'X' in the top right of the dialog).  This can be checked for like so:
           switch (error.errorCode) {
@@ -123,21 +136,11 @@
               console.log('Dialog was closed by user');
               break;
             default:
-              console.error(error.message);
+              console.log(error.message);
           }
         });
       }
 
-
-      function reloadSheetFields(sheetname) {
-        if (!sheetname) return
-        let worksheets = tableau.extensions.dashboardContent.dashboard.worksheets
-
-        var worksheet = worksheets.find(sheet => sheet.name === sheetname)
-        worksheets.forEach(function (wrksht) {
-          loadSelectedMarks(wrksht, worksheet)
-        })
-      }
 
       function loadSelectedMarks(worksheet, main_worksheet) {
         let markselectionEventListener
@@ -156,19 +159,13 @@
         console.log('summary refresh', marks, marks.columns)
         var worksheetData = marks.data[0]
         var cols = marks.columns.map(d => d._fieldName)
-        var actual_emotion = worksheetData[cols.indexOf(comicgenOptions.fields.emotionField.value)]._formattedValue.toLowerCase()
+        var actual_emotion = worksheetData[cols.indexOf(comicgenOptions.form.emotionField.value)]._formattedValue.toLowerCase()
         comicgenOptions.comicgen['emotion'] = avatar_map[comicgenOptions.comicgen.avatar]['emotion_' + actual_emotion]
-        comicgenOptions.comicgen['annotation'] = worksheetData[cols.indexOf(comicgenOptions.fields.speechBubbleTextField.value)]._formattedValue.toLowerCase()
+        comicgenOptions.comicgen['annotation'] = worksheetData[cols.indexOf(comicgenOptions.form.speechBubbleTextField.value)]._formattedValue.toLowerCase()
 
         reloadComicgen(comicgenOptions.comicgen)
       }
-      /**
-       * Helper that is called to set state anytime the settings are changed.
-       */
-      function updateExtensionBasedOnSettings(settings) {
-        var state = JSON.parse(settings);
-        console.log('settings parsed: ', state)
-      }
+
     })();
 
   </script>

@@ -66,3 +66,40 @@ This section has moved here: https://facebook.github.io/create-react-app/docs/de
 ### `yarn build` fails to minify
 
 This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+
+
+
+### Tableau Calculated Field Notes:
+
+```js
+if avg({fixed State: sum([Sales])}) > SUM({sum([Sales])})/sum({COUNTD([State])})
+  then
+    "laugh"
+  else 
+    "sad"
+  end
+
+
+// [#StateHappy] + " states are above national average and " + [#StateSad] + " states are below..."
+  // OR simply
+
+  if sum([Sales]) > 75000  
+  then
+    "laugh"
+  else 
+    "sad"
+  end
+```
+
+
+```js
+"The sum of sales of selected State is: " + STR(ROUND(sum([Sales]))) + " ::: " + STR(SUM({sum([Sales])})/sum({COUNTD([State])}))
+"The average sales of selected States is: " +  STR(ROUND(avg({fixed State: sum([Sales])})))
+
+or
+
+"The sum of sales of selected State is: " + STR(ROUND(sum([Sales])))
+
+```
+
+
